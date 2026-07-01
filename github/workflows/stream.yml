@@ -1,17 +1,27 @@
-name: System Environment Config
+name: Continuous Bot Runtime
 
 on:
-  repository_dispatch:
-    types: [start_stream]
+  workflow_dispatch: # كيشغل البوت بيدك وقت ما بغيتي
 
 jobs:
-  build:
+  run-bot:
     runs-on: ubuntu-latest
     steps:
-    - name: Initialize Core
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+
+    - name: Install FFmpeg
       run: |
         sudo apt-get update
         sudo apt-get install -y ffmpeg
-    - name: Sync Environment Data
-      run: |
-        ffmpeg -user_agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" -headers "Referer: https://google.com/" -re -i "${{ github.event.client_payload.stream_url }}" -c copy -f flv "${{ github.event.client_payload.fb_url }}"
+
+    - name: Install Project Dependencies
+      run: npm install
+
+    - name: Start Turbo Engine
+      run: node index.js
