@@ -4,7 +4,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 
-// 🔐 [تعديل] حط المعطيات ديالك هنا
+// 🔐 المعطيات الأساسية
 const BOT_TOKEN = "8896904518:AAEkbtktyuz3AinMFKUvLspRfoMLqKwTdy8"; 
 const ADMIN_ID = 7141170679; 
 
@@ -15,7 +15,7 @@ app.listen(process.env.PORT || 8080);
 
 const WHITELIST_FILE = path.join(__dirname, 'allowed_users.json');
 
-// دالة لجلب لستة د الناس المصرح لهم
+// جلب لستة المستخدمين
 function loadWhitelist() {
     if (fs.existsSync(WHITELIST_FILE)) {
         try { return JSON.parse(fs.readFileSync(WHITELIST_FILE)); } catch (e) { return []; }
@@ -23,12 +23,12 @@ function loadWhitelist() {
     return [];
 }
 
-// دالة لحفظ لستة د الناس
+// حفظ لستة المستخدمين
 function saveWhitelist(data) {
     fs.writeFileSync(WHITELIST_FILE, JSON.stringify(data, null, 4));
 }
 
-// دالة كتفحص واش الشخص مصرح ليه ولا لا
+// فحص الصلاحية
 function isAuthorized(userId) {
     if (userId === ADMIN_ID) return true;
     return loadWhitelist().includes(userId);
@@ -38,18 +38,16 @@ let activeProcesses = {};
 
 const getUserKeyboard = () => Markup.keyboard([['🚀 إطلاق بث جديد', '📋 البثوث الشغالة']]).resize();
 
-// 🛑 استقبال أي شخص جديد غريب
+// استقبال أمر البداية
 bot.start((ctx) => {
     const userId = ctx.from.id;
-    
     if (!isAuthorized(userId)) {
         return ctx.reply(`❌ عذراً، هاد البوت خاص ومصرح به لأشخاص محددين فقط تجريبياً.\n\n📞 للمزيد من المعلومات أو لتفعيل حسابك، تواصل مع المطور مباشرة:\n➡️ 0717962808`);
     }
-    
     ctx.reply('👋 مرحباً بك في بوت GitHub التيربو للبث اللانهائي الآمن!', getUserKeyboard());
 });
 
-// 👑 لوحة تحكم الـ Admin الرئيسي
+// لوحة تحكم الـ Admin الرئيسي
 bot.command('admin', (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     ctx.reply('👑 **لوحة تحكم الـ Admin المفرقعة:**', {
@@ -83,7 +81,7 @@ bot.action('view_active_all', (ctx) => {
     ctx.reply(text, { parse_mode: 'Markdown' });
 });
 
-// ميكانيزم إضافة أو حذف الأشخاص عبر الـ ID
+// إضافة أو حذف الأشخاص
 bot.hears(/^\/(add|remove) (\d+)/, (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     const cmd = ctx.match[1];
@@ -94,9 +92,9 @@ bot.hears(/^\/(add|remove) (\d+)/, (ctx) => {
         if (!whitelist.includes(targetId)) {
             whitelist.push(targetId);
             saveWhitelist(whitelist);
-            ctx.reply(`✅ تم تفعيل الحساب وإضافته بنجاح للـ Whitelist: \`${targetId}\``, { parse_mode: 'Markdown' });
+            ctx.reply(`✅ تم تفعيل الحساب وإضافته للـ Whitelist: \`${targetId}\``, { parse_mode: 'Markdown' });
         } else {
-            ctx.reply("ℹ️ هاد الـ ID مضاف بالفعل من قبل.");
+            ctx.reply("ℹ️ هاد الـ ID مضاف بالفعل.");
         }
     } else if (cmd === 'remove') {
         if (whitelist.includes(targetId)) {
@@ -104,12 +102,12 @@ bot.hears(/^\/(add|remove) (\d+)/, (ctx) => {
             saveWhitelist(whitelist);
             ctx.reply(`❌ تم حذف الحساب وحظره من الـ Whitelist: \`${targetId}\``, { parse_mode: 'Markdown' });
         } else {
-            ctx.reply("ℹ️ هاد الـ ID غير موجود ف القائمة أصلاً.");
+            ctx.reply("ℹ️ هاد الـ ID غير موجود ف القائمة.");
         }
     }
 });
 
-// إطلاق البثوث (فقط للمصرح لهم)
+// إطلاق البثوث
 bot.hears('🚀 إطلاق بث جديد', (ctx) => {
     if (!isAuthorized(ctx.from.id)) return;
     ctx.reply('📥 أرسل الآن رابط الـ M3U8 أو MPD المباشر:');
@@ -171,7 +169,7 @@ bot.hears(/^\/stop_(.+)/, (ctx) => {
     }
 });
 
-// ⏱️ ميكانيزم الإيقاف الآمن الذكي بعد 5 ساعات ونصف لحماية السيرفر من البلوك المباشر
+// إيقاف آمن بعد 5 ساعات ونصف لإعادة التشغيل الذكي
 setTimeout(() => {
     Object.keys(activeProcesses).forEach(id => {
         try { activeProcesses[id].kill(); } catch (e) {}
@@ -181,57 +179,3 @@ setTimeout(() => {
 
 bot.launch();
 process.on('uncaughtException', (err) => console.error('Error: ', err.message));
-    bot.off('text', handleStreamUrl); 
-
-    bot.on('text', async (ctxNext) => {
-        const facebookUrl = ctxNext.message.text.trim();
-        if (!facebookUrl.startsWith('rtmp')) return;
-
-        const streamId = String(Date.now());
-        ctxNext.reply(`⏳ جاري إطلاق البث ذو المعرف: ${streamId} في الخلفية...`);
-
-        // إعدادات التمويه والـ FFmpeg الخفيف
-        const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
-        const ffmpegArgs = [
-            '-user_agent', userAgent,
-            '-headers', 'Referer: https://google.com/\r\n',
-            '-re', '-i', streamUrl, 
-            '-c', 'copy', 
-            '-f', 'flv', facebookUrl
-        ];
-
-        const process = spawn('ffmpeg', ffmpegArgs);
-        activeProcesses[streamId] = process;
-
-        ctxNext.reply(`✅ البث شغال الآن بنجاح!\n❌ لإيقافه أرسل: /stop_${streamId}`);
-
-        process.on('close', (code) => {
-            delete activeProcesses[streamId];
-            bot.telegram.sendMessage(ADMIN_ID, `ℹ️ انتهى أو انقطع البث ذو المعرف: ${streamId}`);
-        });
-    });
-}
-
-bot.hears('📋 البثوث الشغالة', (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    const keys = Object.keys(activeProcesses);
-    if (keys.length === 0) return ctx.reply('ℹ️ لا توجد أي بثوث شغالة حالياً.');
-    let res = "📋 **البثوث النشطة حالياً:**\n\n";
-    keys.forEach(id => { res += `🆔 المعرف: \`${id}\`\n❌ للإيقاف: /stop_${id}\n\n`; });
-    ctx.reply(res, { parse_mode: 'Markdown' });
-});
-
-bot.hears(/^\/stop_(.+)/, (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    const streamId = ctx.match[1];
-    if (activeProcesses[streamId]) {
-        activeProcesses[streamId].kill();
-        ctx.reply("🛑 تم إيقاف البث بنجاح.");
-    } else {
-        ctx.reply("❌ هاد البث غير موجود أو متوقف بالفعل.");
-    }
-});
-
-bot.launch();
-process.on('uncaughtException', (err) => console.error('Error: ', err.message));
-  
