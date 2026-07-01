@@ -1,7 +1,9 @@
 name: Continuous Bot Runtime
 
 on:
-  workflow_dispatch: # كيشغل البوت بيدك وقت ما بغيتي
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */5 * * *' # هادي زيادة أمان كتعاود تشغل البوت أوتوماتيكياً كل 5 سوايع وخا تنساه
 
 jobs:
   run-bot:
@@ -25,4 +27,11 @@ jobs:
 
     - name: Start Turbo Engine
       run: node index.js
-      
+
+    - name: Auto-Trigger Next Session (Loop)
+      if: always() # وخا يطفى السكريبت كيمشي يعاود يطلق راسه لـ 6 سوايع خرى
+      run: |
+        curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+        -H "Accept: application/vnd.github.v3+json" \
+        https://api.github.com/repos/${{ github.repository }}/actions/workflows/run.yml/dispatches \
+        -d '{"ref":"main"}'
