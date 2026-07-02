@@ -4,19 +4,26 @@ import subprocess
 import os
 import json
 import time
+import requests
 from threading import Thread
 from flask import Flask
 
-# 🔐 المعطيات الأساسية ديالك
+# 🔐 المعطيات الأساسية
 BOT_TOKEN = "8896904518:AAEkbtktyuz3AinMFKUvLspRfoMLqKwTdy8"
 ADMIN_ID = 7141170679
+
+# 🔑 معطيات GitHub لإعادة تشغيل الـ Workflow لراسو (خريطة الـ 5 ساعات)
+GITHUB_TOKEN = os.environ.get("GH_TOKEN", "") # غادي نوريكم كيفاش تزيدوه ف السيكريتس ولا تحطو التوكن ديالك هنا ديريكت
+REPO_OWNER = "Obayd533" # اسم حسابك ف جيتهاب
+REPO_NAME = "inoxo-app"  # اسم المستودع ديالك
+WORKFLOW_ID = "run-bot.yml" # اسم ملف الـ yaml
 
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Python Stream Bot OK"
+    return "🚀 Turbo Live Loop Engine Active"
 
 def run_flask():
     app.run(host='0.0.0.0', port=os.environ.get('PORT', 8080))
@@ -26,23 +33,56 @@ WHITELIST_FILE = 'allowed_users.json'
 def load_whitelist():
     if os.path.exists(WHITELIST_FILE):
         try:
-            with open(WHITELIST_FILE, 'r') as f:
-                return json.load(f)
-        except:
-            return []
+            with open(WHITELIST_FILE, 'r') as f: return json.load(f)
+        except: return []
     return []
 
 def save_whitelist(data):
-    with open(WHITELIST_FILE, 'w') as f:
-        json.dump(data, f, indent=4)
+    with open(WHITELIST_FILE, 'w') as f: json.dump(data, f, indent=4)
 
 def is_authorized(user_id):
-    if user_id == ADMIN_ID:
-        return True
+    if user_id == ADMIN_ID: return True
     return user_id in load_whitelist()
 
 active_processes = {}
 user_states = {}
+start_time = time.time() # توقيت بداية تشغيل السيرفر الحالي
+
+# حفظ الروابط الحالية ف ملف مؤقت باش يلا السيرفر طفا وشعل لراسو يلقاهم واجدين ويكمل البث تلقائياً
+CACHE_FILE = "stream_cache.json"
+
+def save_stream_cache(stream_url, fb_url):
+    with open(CACHE_FILE, 'w') as f:
+        json.dump({"stream_url": stream_url, "fb_url": fb_url}, f)
+
+def load_stream_cache():
+    if os.path.exists(CACHE_FILE):
+        try:
+            with open(CACHE_FILE, 'r') as f: return json.load(f)
+        except: return None
+    return None
+
+def clear_stream_cache():
+    if os.path.exists(CACHE_FILE):
+        try: os.remove(CACHE_FILE)
+        except: pass
+
+def trigger_github_restart():
+    """هاد الدالة كتمشي لـ GitHub وكتطفي السيرفر الحالي وتشعل واحد جديد أوتوماتيكياً فاش كتوصل 5 سوايع"""
+    if not GITHUB_TOKEN:
+        print("GitHub Token is missing! cannot auto-restart workflow.")
+        return
+    url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/actions/workflows/{WORKFLOW_ID}/dispatches"
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    data = {"ref": "main"} # أو اسم الـ branch ديالك (غالباً main)
+    try:
+        requests.post(url, headers=headers, json=data)
+        print("🚀 GitHub Loop triggered successfully!")
+    except Exception as e:
+        print(f"Error triggering GitHub loop: {e}")
 
 def get_user_keyboard():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -51,92 +91,21 @@ def get_user_keyboard():
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    user_id = message.from_user.id
-    if not is_authorized(user_id):
-        bot.reply_to(message, "❌ عذراً، هاد البوت خاص ومصرح به لأشخاص محددين فقط تجريبياً.\n\n📞 لتفعيل حسابك، تواصل مع المطور:\n➡️ 0717962808")
-        return
-    bot.reply_to(message, "👋 مرحباً بك في نسخة Python المستقرة على GitHub Actions!", reply_markup=get_user_keyboard())
-
-@bot.message_handler(commands=['admin'])
-def admin_panel(message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    markup = types.InlineKeyboardMarkup()
-    markup.row(types.InlineKeyboardButton("👥 إدارة الـ Whitelist", callback_data="view_whitelist"))
-    markup.row(types.InlineKeyboardButton("📺 البثوث الشغالة حالياً", callback_data="view_active_all"))
-    bot.reply_to(message, "👑 **لوحة تحكم الـ Admin:**", parse_mode='Markdown', reply_markup=markup)
-
-@bot.callback_query_handler(func=lambda call: True)
-def callback_inline(call):
-    if call.from_user.id != ADMIN_ID:
-        return
-    if call.data == "view_whitelist":
-        whitelist = load_whitelist()
-        text = "👥 **قائمة الأشخاص المصرح لهم:**\n\n"
-        if not whitelist:
-            text += "_القائمة فارغة حالياً._\n"
-        else:
-            for uid in whitelist:
-                text += f"👤 ID: `{uid}`\n"
-        text += "\n✍️ **للإضافة أرسل:** `/add ID` \n❌ **للحذف أرسل:** `/remove ID`"
-        bot.send_message(call.message.chat.id, text, parse_mode='Markdown')
-    
-    elif call.data == "view_active_all":
-        keys = list(active_processes.keys())
-        if not keys:
-            bot.send_message(call.message.chat.id, "ℹ️ لا توجد أي بثوث شغالة حالياً.")
-            return
-        text = "📺 **البثوث النشطة حالياً:**\n\n"
-        for pid in keys:
-            text += f"🆔 معرف البث: `{pid}`\n❌ لإيقافه: /stop_{pid}\n\n"
-        bot.send_message(call.message.chat.id, text, parse_mode='Markdown')
-
-@bot.message_handler(func=lambda m: m.text and (m.text.startswith('/add ') or m.text.startswith('/remove ')))
-def handle_whitelist_commands(message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    parts = message.text.split()
-    if len(parts) < 2:
-        return
-    cmd = parts[0]
-    try:
-        target_id = int(parts[1])
-    except:
-        bot.reply_to(message, "❌ ID غير صحيح.")
-        return
-        
-    whitelist = load_whitelist()
-    if cmd == '/add':
-        if target_id not in whitelist:
-            whitelist.append(target_id)
-            save_whitelist(whitelist)
-            bot.reply_to(message, f"✅ تم إضافة الحساب للـ Whitelist: `{target_id}`", parse_mode='Markdown')
-        else:
-            bot.reply_to(message, "ℹ️ هاد الـ ID مضاف بالفعل.")
-    elif cmd == '/remove':
-        if target_id in whitelist:
-            whitelist.remove(target_id)
-            save_whitelist(whitelist)
-            bot.reply_to(message, f"❌ تم حذف الحساب من الـ Whitelist: `{target_id}`", parse_mode='Markdown')
-        else:
-            bot.reply_to(message, "ℹ️ هاد الـ ID غير موجود ف القائمة.")
+    if not is_authorized(message.from_user.id): return
+    bot.reply_to(message, "👋 مرحباً بك في نسخة البث الصامت اللانهائي (8 ساعات متواصلة)!", reply_markup=get_user_keyboard())
 
 @bot.message_handler(func=lambda message: message.text == '🚀 إطلاق بث جديد')
 def start_stream_flow(message):
-    if not is_authorized(message.from_user.id):
-        return
+    if not is_authorized(message.from_user.id): return
     bot.reply_to(message, "📥 أرسل الآن رابط الـ M3U8 أو MPD المباشر للمباراة:")
     user_states[message.from_user.id] = {'step': 'WAITING_STREAM_URL'}
 
 @bot.message_handler(func=lambda message: user_states.get(message.from_user.id, {}).get('step') == 'WAITING_STREAM_URL')
 def receive_stream_url(message):
     url = message.text.strip()
-    if url.startswith('/') or not url.startswith('http'):
-        return
+    if url.startswith('/') or not url.startswith('http'): return
     
-    # تنظيف الماركداون بشكل متقدم
-    if '](' in url:
-        url = url.split('](')[1].split(')')[0].strip()
+    if '](' in url: url = url.split('](')[1].split(')')[0].strip()
     url = url.replace('(', '').replace(')', '').replace('[', '').replace(']', '').strip()
 
     user_states[message.from_user.id] = {'step': 'WAITING_FB_URL', 'stream_url': url}
@@ -147,30 +116,42 @@ def receive_fb_url(message):
     user_id = message.from_user.id
     fb_url = message.text.strip()
     
-    if '](' in fb_url:
-        fb_url = fb_url.split('](')[0].strip()
+    if '](' in fb_url: fb_url = fb_url.split('](')[0].strip()
     fb_url = fb_url.replace('(', '').replace(')', '').replace('[', '').replace(']', '').strip()
 
     if "rtmps://live-api-s.facebook.com:443/" in fb_url:
         fb_url = fb_url.replace("rtmps://live-api-s.facebook.com:443/", "rtmp://live-api-s.facebook.com:80/")
 
     if not fb_url.startswith('rtmp'):
-        bot.reply_to(message, "❌ الرابط ماشي rtmp صحيح، عاود اضغط على زر الإطلاق وجرب مجدداً.")
+        bot.reply_to(message, "❌ الرابط غير صحيح.")
         user_states.pop(user_id, None)
         return
 
     stream_url = user_states[user_id]['stream_url']
     user_states.pop(user_id, None)
 
-    stream_id = str(int(time.time()))
-    bot.reply_to(message, f"⏳ جاري إطلاق البث ذو المعرف {stream_id} على سيرفر GitHub Actions...")
+    save_stream_cache(stream_url, fb_url)
+    bot.reply_to(message, "✅ تـم حـفـظ الـروابـط! جـاري إطـلاق الـبـث الـصامـت وتـفـعـيـل نـظـام الـتـجـديـد الـتـلـقـائـي كـل 10 دقـائـق...")
+    
+    # إطلاق البث الأول
+    start_ffmpeg_core(stream_url, fb_url, message.chat.id)
+
+def start_ffmpeg_core(stream_url, fb_url, chat_id):
+    stream_id = "LIVE_STREAM"
+    
+    # إيقاف أي بث قديم شغال أولاً لمنع تداخل العمليات
+    if stream_id in active_processes:
+        try: active_processes[stream_id].kill()
+        except: pass
 
     user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    headers = "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)\r\nOrigin: https://snrtlive.ma\r\nReferer: https://snrtlive.ma/\r\n"
+
     ffmpeg_args = [
         'ffmpeg',
-        '-reconnect', '1', '-reconnect_at_eof', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '15',
+        '-reconnect', '1', '-reconnect_at_eof', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '30',
         '-user_agent', user_agent,
-        '-headers', 'Referer: https://google.com/\r\n',
+        '-headers', headers,
         '-re', '-i', stream_url,
         '-c:v', 'copy',
         '-c:a', 'aac',
@@ -178,57 +159,95 @@ def receive_fb_url(message):
     ]
 
     try:
-        process = subprocess.Popen(ffmpeg_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.Popen(ffmpeg_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         active_processes[stream_id] = process
-        bot.send_message(message.chat.id, f"✅ البث شغال الآن بنجاح!\n❌ لإيقافه أرسل: /stop_{stream_id}")
         
+        # مراقبة الانتهاء الطبيعي للمباراة
         def monitor():
             process.wait()
-            if stream_id in active_processes:
-                del active_processes[stream_id]
-                try: bot.send_message(message.chat.id, f"ℹ️ البث ذو المعرف {stream_id} انتهى.")
-                except: pass
         Thread(target=monitor).start()
-
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ خطأ ف تشغيل البث: {str(e)}")
+        print(f"FFmpeg launch error: {e}")
+
+def auto_restart_and_loop_manager():
+    """المحرك السري: كيدير تجديد تلقائي ف الصمت كل 10 دقائق، وفاش كتوصل 5 سوايع كيطفي ويشعل راسه ف جيتهاب"""
+    global start_time
+    chat_id = ADMIN_ID # إرسال التقارير الأساسية للآدمين فقط في الحالات القصوى
+    
+    while True:
+        time.sleep(10) # فحص مستمر كل 10 ثواني
+        current_elapsed = time.time() - start_time
+        
+        # 1. نظام الـ 5 ساعات: إعادة تشغيل الـ Workflow كاملا في GitHub لكسر قيود الـ 6 ساعات
+        if current_elapsed >= 18000: # 5 ساعات بالثواني (5 * 3600)
+            cache = load_stream_cache()
+            if cache:
+                # إطلاق سيرفر جديد قبل ما يطفا هادا
+                trigger_github_restart()
+                try: bot.send_message(chat_id, "🔄 مرت 5 ساعات! تم نقل البث تلقائياً إلى حاوية GitHub جديدة وضمان استمرار الـ 8 ساعات بنجاح وبدون انقطاع.")
+                except: pass
+                time.sleep(10)
+                os._exit(0) # إنهاء العملية الحالية بسلام
+        
+        # 2. نظام التجديد التلقائي كل 10 دقائق (600 ثانية) ف صمت وبلا ميساجات
+        # كيعاود يطلق الـ FFmpeg باش يضمن أن السيرفر د الفيسبوك مايموتش واللايف يبقا شغال تيربو
+        cache = load_stream_cache()
+        if cache:
+            stream_id = "LIVE_STREAM"
+            # إذا دازت 10 دقائق على تشغيل الـ FFmpeg الحالي أو إيلا طاح لراسه، كنعاودو نجددوه
+            if stream_id in active_processes:
+                # التحقق هل دازت 10 دقائق (هنا نقوم بالتجديد لإنعاش الاتصال بالفيسبوك)
+                # لتجنب كثرة القتل، سنترك النظام يجدد كل 10 دقائق عبر قتل العملية الحالية وإعادة تشغيلها صامتاً
+                pass 
+
+def silent_timer_restarter():
+    """تجديد صامت صارم كل 10 دقائق دقيقة بدقيقة"""
+    while True:
+        time.sleep(600) # 10 دقائق بالضبط
+        cache = load_stream_cache()
+        if cache:
+            # إعادة إنعاش الـ FFmpeg في صمت وبدون إرسال أي رسالة تليغرام برزاطة
+            start_ffmpeg_core(cache["stream_url"], cache["fb_url"], ADMIN_ID)
 
 @bot.message_handler(func=lambda message: message.text == '📋 البثوث الشغالة')
 def list_active_streams(message):
-    if not is_authorized(message.from_user.id):
-        return
-    keys = list(active_processes.keys())
-    if not keys:
+    if not is_authorized(message.from_user.id): return
+    cache = load_stream_cache()
+    if cache:
+        elapsed = int(time.time() - start_time)
+        hours = elapsed // 3600
+        minutes = (elapsed % 3600) // 60
+        bot.reply_to(message, f"📋 **البث التيربو الصامت شغال حالياً:**\n⏱️ مدة التشغيل الحالية: {hours} ساعة و {minutes} دقيقة.\n🔄 نظام التجديد التلقائي (10min) شغال ف الخلفية.\n❌ لإيقاف البث كلياً: /stop_live")
+    else:
         bot.reply_to(message, "ℹ️ لا توجد أي بثوث شغالة حالياً.")
-        return
-    res = "📋 **بثوثك النشطة حالياً:**\n\n"
-    for pid in keys:
-        res += f"🆔 المعرف: `{pid}`\n❌ للإيقاف: /stop_{pid}\n\n"
-    bot.reply_to(message, res, parse_mode='Markdown')
 
-@bot.message_handler(func=lambda message: message.text and message.text.startswith('/stop_'))
-def stop_stream(message):
-    if not is_authorized(message.from_user.id):
-        return
-    stream_id = message.text.replace('/stop_', '').strip()
+@bot.message_handler(commands=['stop_live', 'stop'])
+def stop_all_stream(message):
+    if not is_authorized(message.from_user.id): return
+    clear_stream_cache()
+    stream_id = "LIVE_STREAM"
     if stream_id in active_processes:
         try:
             active_processes[stream_id].kill()
             del active_processes[stream_id]
-            bot.reply_to(message, "🛑 تم إيقاف البث بنجاح ف السيرفر.")
-        except:
-            bot.reply_to(message, "❌ فشل إيقاف البث.")
-    else:
-        bot.reply_to(message, "ℹ️ هاد البث غير موجود أو متوقف بالفعل.")
+        except: pass
+    bot.reply_to(message, "🛑 تم إيقاف البث وحذف الروابط من الذاكرة التلقائية بنجاح.")
 
 if __name__ == '__main__':
+    # تشغيل سيرفر الويب الوهمي لحماية الحاوية
     Thread(target=run_flask).start()
     
-    # محرك التكرار اللانهائي (Anti-Crash Loop) لبوت فايتون
+    # تشغيل محرك إدارة الوقت والـ 5 ساعات
+    Thread(target=auto_restart_and_loop_manager).start()
+    
+    # تشغيل محرك التجديد الصامت كل 10 دقائق
+    Thread(target=silent_timer_restarter).start()
+    
+    # التحقق عند إقلاع السيرفر (إيلا كان جاي من ريستارت د 5 ساعات يكمل البث لراسو)
+    auto_cache = load_stream_cache()
+    if auto_cache:
+        start_ffmpeg_core(auto_cache["stream_url"], auto_cache["fb_url"], ADMIN_ID)
+    
     while True:
-        try:
-            bot.polling(none_stop=True, timeout=60, long_polling_timeout=60)
-        except Exception as e:
-            print(f"Bot crash prevented: {e}")
-            time.sleep(5)
-                      
+        try: bot.polling(none_stop=True, timeout=60)
+        except: time.sleep(5)
