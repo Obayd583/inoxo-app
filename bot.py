@@ -14,7 +14,7 @@ ADMIN_ID = 7141170679  # 👑 المالك الرئيسي
 
 # 🔑 معطيات GitHub لإعادة تشغيل الحاوية أوتوماتيكياً بعد 5 ساعات
 GITHUB_TOKEN = os.environ.get("GH_TOKEN", "ghp_YOUR_ACTUAL_GITHUB_TOKEN_HERE") 
-REPO_OWNER = "Obayd533" 
+REPO_OWNER = "Obayd583" 
 REPO_NAME = "inoxo-app"  
 WORKFLOW_ID = "run-bot.yml" 
 
@@ -25,14 +25,13 @@ START_SERVER_TIME = time.time()
 
 @app.route('/')
 def home():
-    return "🚀 Turbo Stream Engine v3 Active!"
+    return "🚀 Turbo Stream Engine Active!"
 
 def run_flask():
     try: app.run(host='0.0.0.0', port=8080)
     except: pass
 
 WHITELIST_FILE = "allowed_users.json"
-HISTORY_FILE = "streams_history.json"
 CACHE_FILE = "stream_loop_cache.json"
 
 def load_whitelist():
@@ -98,7 +97,7 @@ def stream_timer_supervisor(stream_id, user_id):
     while restart_flags.get(stream_id, False):
         time.sleep(10)
         elapsed = time.time() - START_SERVER_TIME
-        if elapsed >= 18000:  # 5 سوايع
+        if elapsed >= 18000:  # 5 ساعات
             trigger_github_action_loop()
             try: bot.send_message(user_id, f"🔄 مرت 5 ساعات! جاري نقل البث المسمى `{stream_names.get(stream_id)}` تلقائياً لحاوية جديدة...")
             except: pass
@@ -125,7 +124,7 @@ def run_heavy_stream_loop(stream_id, user_id):
         facebook_url = facebook_targets.get(stream_id)
         if not stream_url or not facebook_url: break
 
-        # غسل الروابط د الفيسبوك من الأقواس والماركداون المسببة للمشاكل
+        # تنظيف الروابط من الماركداون والأقواس
         if '](' in facebook_url: facebook_url = facebook_url.split('](')[0].replace('[', '').strip()
         facebook_url = facebook_url.replace('(', '').replace(')', '').replace('[', '').replace(']', '').strip()
         
@@ -149,10 +148,10 @@ def run_heavy_stream_loop(stream_id, user_id):
             time.sleep(2)
             continue
 
-@types.bot.message_handler(commands=['start'])
+@bot.message_handler(commands=['start'])
 def start_cmd(message):
     if not is_authorized(message.from_user.id): return
-    bot.send_message(message.from_user.id, "🟢 **مرحباً بك في النسخة النهائية الفولاذية!**\nكلشي واجد دابا، استخدم الأزرار أسفله:", reply_markup=get_user_keyboard())
+    bot.send_message(message.from_user.id, "🟢 **مرحباً بك في النسخة الفولاذية المصححة!**\n\nكلشي واجد دابا والمكتبات مضبوطة. استخدم الأزرار التفاعلية أسفله:", reply_markup=get_user_keyboard())
 
 @bot.message_handler(func=lambda message: True)
 def handle_text_actions(message):
@@ -161,7 +160,7 @@ def handle_text_actions(message):
     text = message.text.strip()
 
     if text == "🚀 إطلاق بث جديد":
-        msg = bot.reply_to(message, "✍️ أولاً، صيفط **سمية لهاد البث** (مثال: ماتش تطوان):")
+        msg = bot.reply_to(message, "✍️ أولاً، صيفط **سمية واضحة لهاد البث** (مثال: ماتش المغرب):")
         bot.register_next_step_handler(msg, process_get_name)
         
     elif text == "📋 بثوثي الشغالة":
@@ -182,7 +181,7 @@ def handle_text_actions(message):
             bot.reply_to(message, "ℹ️ ليس لديك أي بث شغال لإيقافه.")
             return
         
-        # إنشاء أزرار إنلاين تفاعلية لاختيار الماتش المراد حذفه
+        # أزرار إنلاين تفاعلية اختيارية واضحة
         markup = types.InlineKeyboardMarkup(row_width=1)
         for s_id, data in user_streams.items():
             btn = types.InlineKeyboardButton(f"🛑 إيقاف: {data['name']}", callback_data=f"stop_{s_id}")
@@ -202,7 +201,7 @@ def process_stream_url(message, name):
 
 def process_facebook_url(message, name, stream_url):
     facebook_url = message.text.strip()
-    if not facebook_url.startswith('rtmp'): return
+    if not facebook_url.startswith('rtmp') and not facebook_url.startswith('rtmps'): return
 
     stream_id = str(int(time.time() * 1000))
     stream_owners[stream_id] = message.from_user.id
@@ -213,7 +212,7 @@ def process_facebook_url(message, name, stream_url):
     save_stream_cache(stream_id, name, stream_url, facebook_url, message.from_user.id)
 
     threading.Thread(target=run_heavy_stream_loop, args=(stream_id, message.from_user.id), daemon=True).start()
-    bot.reply_to(message, f"🚀 **تم إطلاق البث بنجاح!**\n📌 الاسم المعتمد: `{name}`\n\n⏱️ البث غايبقا شغال 8h مع تجديد صامت كل 10min بدون رسائل مزعجة.", parse_mode="Markdown", reply_markup=get_user_keyboard())
+    bot.reply_to(message, f"🚀 **تم إطلاق البث بنجاح!**\n📌 الاسم: `{name}`\n\n⏱️ البث غايبقا شغال 8h مع تجديد صامت كل 10min وبلا ميساجات تليغرام برزاطة.", parse_mode="Markdown", reply_markup=get_user_keyboard())
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("stop_"))
 def callback_stop_stream(call):
@@ -226,16 +225,16 @@ def callback_stop_stream(call):
         try: active_processes[stream_id].terminate()
         except: pass
         remove_from_cache(stream_id)
-        bot.answer_callback_query(call.id, "🛑 تم إيقاف البث بنجاح")
-        bot.edit_message_text(f"✅ تم إيقاف البث المسمى `{cache[stream_id]['name']}` بنجاح وتطهير الحاوية.", call.message.chat.id, call.message.message_id)
+        bot.answer_callback_query(call.id, "🛑 تم إيقاف البث")
+        bot.edit_message_text(f"✅ تم إيقاف البث المسمى `{cache[stream_id]['name']}` بنجاح.", call.message.chat.id, call.message.message_id)
     else:
-        bot.answer_callback_query(call.id, "⚠️ هاد البث غير موجود أو متوقف مسبقاً.")
+        bot.answer_callback_query(call.id, "⚠️ هاد البث متوقف مسبقاً.")
 
 if __name__ == "__main__":
     threading.Thread(target=run_flask, daemon=True).start()
-    print("🚀 Running Pro Clean Polling Engine v3...")
+    print("🚀 Running Clean Polling Engine...")
     
-    # إحياء الجلسات التلقائي بعد الـ 5 ساعات
+    # إعادة إحياء الجلسات أوتوماتيكياً ف السيرفر الجديد
     cached_all = load_all_cache()
     if cached_all:
         for s_id, data in cached_all.items():
@@ -244,7 +243,7 @@ if __name__ == "__main__":
             stream_owners[s_id] = data["user_id"]
             stream_names[s_id] = data["name"]
             threading.Thread(target=run_heavy_stream_loop, args=(s_id, data["user_id"]), daemon=True).start()
-            try: bot.send_message(data["user_id"], f"🟢 **تجديد الجلسة بنجاح:** البث المسمى `{data['name']}` مستمر ومحمي ف السيرفر الجديد!")
+            try: bot.send_message(data["user_id"], f"🟢 **تجديد الجلسة:** البث المسمى `{data['name']}` كمل لراسو ف السيرفر الجديد!")
             except: pass
 
     while True:
