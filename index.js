@@ -4,7 +4,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 
-// 🔐 المعطيات الأساسية ديالك
+// 🔐 المعطيات الأساسية
 const BOT_TOKEN = "8896904518:AAEkbtktyuz3AinMFKUvLspRfoMLqKwTdy8"; 
 const ADMIN_ID = 7141170679; 
 
@@ -78,7 +78,8 @@ bot.action('view_active_all', (ctx) => {
     ctx.reply(text, { parse_mode: 'Markdown' });
 });
 
-bot.hears(/^\/\(add|remove) (\d+)/, (ctx) => {
+// التعديل والميكانيزم الصحيح لـ Regex بدون أي أخطاء syntax 🛠️
+bot.hears(/^\/(add|remove) (\d+)/, (ctx) => {
     if (ctx.from.id !== ADMIN_ID) return;
     const cmd = ctx.match[1];
     const targetId = parseInt(ctx.match[2]);
@@ -125,7 +126,7 @@ async function handleStreamUrl(ctx) {
         if (!isAuthorized(ctxNext.from.id)) return;
         let facebookUrl = ctxNext.message.text.trim();
         
-        // 🧼 غسل وتنظيف كود فيسبوك أوتوماتيكياً من كاع الشوائب والأقواس تليغرام
+        // غسل وتنظيف كود فيسبوك أوتوماتيكياً من كاع الشوائب والأقواس تليغرام
         if (facebookUrl.includes('](')) {
             facebookUrl = facebookUrl.split('](')[0].trim();
         }
@@ -145,7 +146,6 @@ async function handleStreamUrl(ctx) {
 
         const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
         
-        // إعدادات الـ FFmpeg الأقوى والمستقرة والمقاومة للتقطاع
         const ffmpegArgs = [
             '-reconnect', '1', '-reconnect_at_eof', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '15',
             '-user_agent', userAgent,
@@ -196,7 +196,6 @@ bot.hears(/^\/stop_(.+)/, (ctx) => {
     }
 });
 
-// تدوير تلقائي آمن للسيرفر كل 5 ساعات ونصف
 setTimeout(() => {
     Object.keys(activeProcesses).forEach(id => {
         try { activeProcesses[id].kill(); } catch (e) {}
@@ -206,60 +205,9 @@ setTimeout(() => {
 
 bot.launch();
 
-// 🛡️ درع الحماية الأقوى (Anti-Crash Global) - مستحيل البوت يطفى وخا يوقع أي خطأ
 process.on('uncaughtException', (err) => console.error('System Recovered From Exception: ', err.message));
 process.on('unhandledRejection', (reason, promise) => console.error('System Recovered From Rejection: ', reason));
-
-bot.start((ctx) => {
-    const userId = ctx.from.id;
-    if (!isAuthorized(userId)) {
-        return ctx.reply(`❌ عذراً، هاد البوت خاص ومصرح به لأشخاص محددين فقط تجريبياً.\n\n📞 للمزيد من المعلومات أو لتفعيل حسابك، تواصل مع المطور مباشرة:\n➡️ 0717962808`);
-    }
-    ctx.reply('👋 مرحباً بك في بوت GitHub التيربو المحمي ضد التشنج!', getUserKeyboard());
-});
-
-bot.command('admin', (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    ctx.reply('👑 **لوحة تحكم الـ Admin المفرقعة:**', {
-        parse_mode: 'Markdown',
-        ...Markup.inlineKeyboard([
-            [Markup.button.callback('👥 إدارة الـ Whitelist', 'view_whitelist')],
-            [Markup.button.callback('📺 البثوث الشغالة حالياً', 'view_active_all')]
-        ])
-    });
-});
-
-bot.action('view_whitelist', (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    const whitelist = loadWhitelist();
-    let text = "👥 **قائمة الأشخاص المصرح لهم بالتجريب:**\n\n";
-    if (whitelist.length === 0) {
-        text += "_القائمة فارغة حالياً._\n";
-    } else {
-        whitelist.forEach(uid => { text += `👤 ID: \`${uid}\`\n`; });
-    }
-    text += "\n✍️ **للإضافة أرسل:** `/add ID` \n❌ **للحذف أرسل:** `/remove ID`";
-    ctx.reply(text, { parse_mode: 'Markdown' });
-});
-
-bot.action('view_active_all', (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    const keys = Object.keys(activeProcesses);
-    if (keys.length === 0) return ctx.reply('ℹ️ لا توجد أي بثوث شغالة حالياً ف السيرفر.');
-    let text = "📺 **البثوث النشطة حالياً:**\n\n";
-    keys.forEach(id => { text += `🆔 معرف البث: \`${id}\`\n❌ لإيقافه فوراً: /stop_${id}\n\n`; });
-    ctx.reply(text, { parse_mode: 'Markdown' });
-});
-
-bot.hears(/^\/(add|remove) (\d+)/, (ctx) => {
-    if (ctx.from.id !== ADMIN_ID) return;
-    const cmd = ctx.match[1];
-    const targetId = parseInt(ctx.match[2]);
-    let whitelist = loadWhitelist();
-
-    if (cmd === 'add') {
-        if (!whitelist.includes(targetId)) {
-            whitelist.push(targetId);
+  whitelist.push(targetId);
             saveWhitelist(whitelist);
             ctx.reply(`✅ تم تفعيل الحساب وإضافته للـ Whitelist: \`${targetId}\``, { parse_mode: 'Markdown' });
         } else { ctx.reply("ℹ️ هاد الـ ID مضاف بالفعل."); }
