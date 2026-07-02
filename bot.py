@@ -9,7 +9,7 @@ import requests
 from flask import Flask
 
 # 🔐 الإعدادات الأساسية بالتوكن والآي دي ديالك
-BOT_TOKEN = "7948322050:AAETdCCpx2f_EMPnOYateYJcHm8q32tzXOk"
+BOT_TOKEN = "8896904518:AAHmPfmJkoJeS1XzFYb5-ZKvhcvJRh_tAJQ"
 ADMIN_ID = 7141170679  # 👑 المالك الرئيسي
 
 # 🔑 معطيات GitHub لإعادة تشغيل الحاوية أوتوماتيكياً بعد 5 ساعات
