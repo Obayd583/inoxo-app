@@ -92,19 +92,19 @@ def trigger_github_action_loop():
     try: requests.post(url, headers=headers, json={"ref": "main"})
     except: pass
 
-# ⏱️ مراقبة الـ 5 ساعات لنقل الجلسة
+# ⏱️ مراقبة الـ 5 ساعات لنقل الجلسة تلقائياً
 def stream_timer_supervisor(stream_id, user_id):
     while restart_flags.get(stream_id, False):
         time.sleep(10)
         elapsed = time.time() - START_SERVER_TIME
         if elapsed >= 18000:  # 5 ساعات
             trigger_github_action_loop()
-            try: bot.send_message(user_id, f"🔄 مرت 5 ساعات! جاري نقل البث المسمى `{stream_names.get(stream_id)}` تلقائياً لحاوية جديدة...")
+            try: bot.send_message(user_id, f"🔄 مرت 5 ساعات! جاري نقل البث `{stream_names.get(stream_id)}` تلقائياً لحاوية جديدة...")
             except: pass
             time.sleep(5)
             os._exit(0)
 
-# ⏱️ التجديد التلقائي الصامت كل 10 دقائق
+# ⏱️ التجديد التلقائي الصامت كل 10 دقائق لتفادي تشنج البث
 def silent_10min_loop_renewer(stream_id, user_id):
     while restart_flags.get(stream_id, False):
         time.sleep(600)  
@@ -112,7 +112,7 @@ def silent_10min_loop_renewer(stream_id, user_id):
             try: active_processes[stream_id].terminate()
             except: pass
 
-# 📺 محرك البث الـ Loop الصارم والآمن
+# 📺 محرك البث الـ Loop الفولاذي والمعدل لإرسال البث للفيسبوك
 def run_heavy_stream_loop(stream_id, user_id):
     restart_flags[stream_id] = True
     
@@ -124,21 +124,38 @@ def run_heavy_stream_loop(stream_id, user_id):
         facebook_url = facebook_targets.get(stream_id)
         if not stream_url or not facebook_url: break
 
-        # [تعديل مهم] تم إيقاف تغيير rtmps إلى rtmp باش يدوز الرابط الصحيح ديالك نيشان بلا مشاكل!
+        # تنظيف الرابط بشكل كامل من أي فراغات أو أقواس زائدة قد تفسد الاتصال
+        stream_url = stream_url.strip()
+        facebook_url = facebook_url.strip()
+
+        # أمر FFmpeg معدل 100% ليتوافق مع RTMPS الآمن الخاص بفيسبوك وبأقل استهلاك للمعالج
         ffmpeg_cmd = [
-            'ffmpeg', '-reconnect', '1', '-reconnect_at_eof', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '15',
-            '-headers', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\n',
-            '-i', stream_url, '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k', '-f', 'flv', facebook_url
+            'ffmpeg',
+            '-reconnect', '1',
+            '-reconnect_at_eof', '1',
+            '-reconnect_streamed', '1',
+            '-reconnect_delay_max', '5',
+            '-i', stream_url,
+            '-c:v', 'copy',          # نسخ الفيديو الأصلي بدون إعادة معالجة لتخفيف الضغط على GitHub
+            '-c:a', 'aac',           # تحويل الصوت لـ AAC المتوافق مع فيسبوك
+            '-b:a', '128k',
+            '-ar', '44100',          # تردد الصوت القياسي للبثوث
+            '-f', 'flv',
+            facebook_url
         ]
+        
         try:
+            # تشغيل البث ف صمت تام
             process = subprocess.Popen(ffmpeg_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             active_processes[stream_id] = process
             process.wait()
+            
+            # إعادة المحاولة فورا إذا انقطع الاتصال بشكل غير متوقع
             if restart_flags.get(stream_id, False):
                 time.sleep(1)
                 continue
             else: break
-        except:
+        except Exception as e:
             time.sleep(2)
             continue
 
@@ -154,7 +171,7 @@ def handle_text_actions(message):
     text = message.text.strip()
 
     if text == "🚀 إطلاق بث جديد":
-        msg = bot.reply_to(message, "✍️ أولاً، صيفط **سمية واضحة لهاد البث** (مثال: ماتش الماط):")
+        msg = bot.reply_to(message, "✍️ أولاً، صيفط **سمية واضحة لهاد البث** (مثال: ماتش تطوان):")
         bot.register_next_step_handler(msg, process_get_name)
         
     elif text == "📋 بثوثي الشغالة":
