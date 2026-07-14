@@ -8,15 +8,15 @@ import threading
 import requests
 from flask import Flask
 
-# 🔐 الإعدادات الأساسية بالتوكن والآي دي ديالك
-BOT_TOKEN = "8896904518:AAHmPfmJkoJeS1XzFYb5-ZKvhcvJRh_tAJQ"
+# 🔐 الإعدادات الأساسية بالتوكن الجديد والآي دي ديالك
+BOT_TOKEN = "8736155204:AAEUYBRonEzBHJkUhqn9nR4iNAF50NPlv74"
 ADMIN_ID = 7141170679  # 👑 المالك الرئيسي
 
 # 🔑 معطيات GitHub لإعادة تشغيل الحاوية أوتوماتيكياً بعد 5 ساعات
 GITHUB_TOKEN = os.environ.get("GH_TOKEN", "ghp_YOUR_ACTUAL_GITHUB_TOKEN_HERE") 
 REPO_OWNER = "Obayd583" 
 REPO_NAME = "inoxo-app"  
-WORKFLOW_ID = "run-bot.yml" 
+WORKFLOW_ID = "run-bot.yml"  # تأكد أن اسم ملف الـ workflow ف الـ Actions مطابق لهاد الاسم
 
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
@@ -80,6 +80,7 @@ def is_authorized(user_id):
     return user_id in load_whitelist()
 
 def get_user_keyboard():
+    # كيبورد رئيسي مريح
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row(types.KeyboardButton("🚀 إطلاق بث جديد"))
     markup.row(types.KeyboardButton("📋 بثوثي الشغالة"), types.KeyboardButton("❌ إيقاف بث محدد"))
@@ -104,7 +105,7 @@ def stream_timer_supervisor(stream_id, user_id):
             time.sleep(5)
             os._exit(0)
 
-# ⏱️ التجديد التلقائي الصامت كل 10 دقائق
+# ⏱️ التجديد التلقائي الصامت كل 10 دقائق (بدون رسائل مزعجة)
 def silent_10min_loop_renewer(stream_id, user_id):
     while restart_flags.get(stream_id, False):
         time.sleep(600)  # 10 دقائق ف صمت
@@ -112,7 +113,7 @@ def silent_10min_loop_renewer(stream_id, user_id):
             try: active_processes[stream_id].terminate()
             except: pass
 
-# 📺 محرك البث الـ Loop
+# 📺 محرك البث الـ Loop الصارم والآمن
 def run_heavy_stream_loop(stream_id, user_id):
     restart_flags[stream_id] = True
     
@@ -124,13 +125,14 @@ def run_heavy_stream_loop(stream_id, user_id):
         facebook_url = facebook_targets.get(stream_id)
         if not stream_url or not facebook_url: break
 
-        # تنظيف الروابط من الماركداون والأقواس
+        # تنظيف كامل للروابط من الماركداون والأقواس لتجنب أخطاء الإطلاق
         if '](' in facebook_url: facebook_url = facebook_url.split('](')[0].replace('[', '').strip()
         facebook_url = facebook_url.replace('(', '').replace(')', '').replace('[', '').replace(']', '').strip()
         
         if "rtmps://live-api-s.facebook.com:443/" in facebook_url:
             facebook_url = facebook_url.replace("rtmps://live-api-s.facebook.com:443/", "rtmp://live-api-s.facebook.com:80/")
 
+        # تشغيل FFmpeg بطريقة آمنة ومحسنة تستهلك أقل قدر من موارد السيرفر (حماية لحساب GitHub)
         ffmpeg_cmd = [
             'ffmpeg', '-reconnect', '1', '-reconnect_at_eof', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '15',
             '-headers', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\n',
@@ -151,7 +153,7 @@ def run_heavy_stream_loop(stream_id, user_id):
 @bot.message_handler(commands=['start'])
 def start_cmd(message):
     if not is_authorized(message.from_user.id): return
-    bot.send_message(message.from_user.id, "🟢 **مرحباً بك في النسخة الفولاذية المصححة!**\n\nكلشي واجد دابا والمكتبات مضبوطة. استخدم الأزرار التفاعلية أسفله:", reply_markup=get_user_keyboard())
+    bot.send_message(message.from_user.id, "🟢 **مرحباً بك في النسخة الفولاذية والنهائية!**\n\nكلشي واجد دابا والمكتبات مضبوطة. استخدم الأزرار التفاعلية أسفله:", reply_markup=get_user_keyboard())
 
 @bot.message_handler(func=lambda message: True)
 def handle_text_actions(message):
@@ -160,7 +162,7 @@ def handle_text_actions(message):
     text = message.text.strip()
 
     if text == "🚀 إطلاق بث جديد":
-        msg = bot.reply_to(message, "✍️ أولاً، صيفط **سمية واضحة لهاد البث** (مثال: ماتش المغرب):")
+        msg = bot.reply_to(message, "✍️ أولاً، صيفط **سمية واضحة لهاد البث** (مثال: ماتش الماط):")
         bot.register_next_step_handler(msg, process_get_name)
         
     elif text == "📋 بثوثي الشغالة":
@@ -171,7 +173,7 @@ def handle_text_actions(message):
             return
         res = "📺 **بثوثك الشغالة حالياً تيربو:**\n\n"
         for s_id, data in user_streams.items():
-            res += f"📌 **الاسم:** {data['name']}\n🆔 المعرف: `{s_id}`\n⏱️ نظام التجديد التلقائي (10min) شغال ف الخلفية.\n\n"
+            res += f"📌 **الاسم:** {data['name']}\n🆔 المعرف: `{s_id}`\n⏱️ نظام التجديد التلقائي شغال ف الخلفية.\n\n"
         bot.reply_to(message, res, parse_mode="Markdown")
 
     elif text == "❌ إيقاف بث محدد":
@@ -181,12 +183,13 @@ def handle_text_actions(message):
             bot.reply_to(message, "ℹ️ ليس لديك أي بث شغال لإيقافه.")
             return
         
-        # أزرار إنلاين تفاعلية اختيارية واضحة
+        # أزرار تفاعلية خضراء لاختيار الماتش المراد حذفه
         markup = types.InlineKeyboardMarkup(row_width=1)
         for s_id, data in user_streams.items():
-            btn = types.InlineKeyboardButton(f"🛑 إيقاف: {data['name']}", callback_data=f"stop_{s_id}")
+            # استخدام إيموجي الدائرة الخضراء والزر المنظم
+            btn = types.InlineKeyboardButton(f"🟢 إيقاف: {data['name']}", callback_data=f"stop_{s_id}")
             markup.add(btn)
-        bot.send_message(user_id, "👇 اختر البث لي بغيتي تطفي من القائمة:", reply_markup=markup)
+        bot.send_message(user_id, "👇 اختر البث لي بغيتي تطفي من القائمة التفاعلية:", reply_markup=markup)
 
 def process_get_name(message):
     name = message.text.strip()
@@ -212,7 +215,7 @@ def process_facebook_url(message, name, stream_url):
     save_stream_cache(stream_id, name, stream_url, facebook_url, message.from_user.id)
 
     threading.Thread(target=run_heavy_stream_loop, args=(stream_id, message.from_user.id), daemon=True).start()
-    bot.reply_to(message, f"🚀 **تم إطلاق البث بنجاح!**\n📌 الاسم: `{name}`\n\n⏱️ البث غايبقا شغال 8h مع تجديد صامت كل 10min وبلا ميساجات تليغرام برزاطة.", parse_mode="Markdown", reply_markup=get_user_keyboard())
+    bot.reply_to(message, f"🚀 **تم إطلاق البث بنجاح!**\n📌 الاسم: `{name}`\n\n⏱️ البث شغال دابا وتجديد تلقائي صامت خدام ف الخلفية.", parse_mode="Markdown", reply_markup=get_user_keyboard())
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("stop_"))
 def callback_stop_stream(call):
@@ -226,7 +229,7 @@ def callback_stop_stream(call):
         except: pass
         remove_from_cache(stream_id)
         bot.answer_callback_query(call.id, "🛑 تم إيقاف البث")
-        bot.edit_message_text(f"✅ تم إيقاف البث المسمى `{cache[stream_id]['name']}` بنجاح.", call.message.chat.id, call.message.message_id)
+        bot.edit_message_text(f"✅ تم إيقاف البث المسمى `{cache[stream_id]['name']}` بنجاح وتطهير الحاوية.", call.message.chat.id, call.message.message_id)
     else:
         bot.answer_callback_query(call.id, "⚠️ هاد البث متوقف مسبقاً.")
 
@@ -234,7 +237,7 @@ if __name__ == "__main__":
     threading.Thread(target=run_flask, daemon=True).start()
     print("🚀 Running Clean Polling Engine...")
     
-    # إعادة إحياء الجلسات أوتوماتيكياً ف السيرفر الجديد
+    # إعادة إحياء الجلسات التلقائي
     cached_all = load_all_cache()
     if cached_all:
         for s_id, data in cached_all.items():
