@@ -16,7 +16,7 @@ ADMIN_ID = 7141170679  # 👑 المالك الرئيسي
 GITHUB_TOKEN = os.environ.get("GH_TOKEN", "ghp_YOUR_ACTUAL_GITHUB_TOKEN_HERE") 
 REPO_OWNER = "Obayd583" 
 REPO_NAME = "inoxo-app"  
-WORKFLOW_ID = "run-bot.yml"  # تأكد أن اسم ملف الـ workflow ف الـ Actions مطابق لهاد الاسم
+WORKFLOW_ID = "run-bot.yml"  
 
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
@@ -80,7 +80,6 @@ def is_authorized(user_id):
     return user_id in load_whitelist()
 
 def get_user_keyboard():
-    # كيبورد رئيسي مريح
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row(types.KeyboardButton("🚀 إطلاق بث جديد"))
     markup.row(types.KeyboardButton("📋 بثوثي الشغالة"), types.KeyboardButton("❌ إيقاف بث محدد"))
@@ -105,10 +104,10 @@ def stream_timer_supervisor(stream_id, user_id):
             time.sleep(5)
             os._exit(0)
 
-# ⏱️ التجديد التلقائي الصامت كل 10 دقائق (بدون رسائل مزعجة)
+# ⏱️ التجديد التلقائي الصامت كل 10 دقائق
 def silent_10min_loop_renewer(stream_id, user_id):
     while restart_flags.get(stream_id, False):
-        time.sleep(600)  # 10 دقائق ف صمت
+        time.sleep(600)  
         if restart_flags.get(stream_id, False) and stream_id in active_processes:
             try: active_processes[stream_id].terminate()
             except: pass
@@ -125,14 +124,7 @@ def run_heavy_stream_loop(stream_id, user_id):
         facebook_url = facebook_targets.get(stream_id)
         if not stream_url or not facebook_url: break
 
-        # تنظيف كامل للروابط من الماركداون والأقواس لتجنب أخطاء الإطلاق
-        if '](' in facebook_url: facebook_url = facebook_url.split('](')[0].replace('[', '').strip()
-        facebook_url = facebook_url.replace('(', '').replace(')', '').replace('[', '').replace(']', '').strip()
-        
-        if "rtmps://live-api-s.facebook.com:443/" in facebook_url:
-            facebook_url = facebook_url.replace("rtmps://live-api-s.facebook.com:443/", "rtmp://live-api-s.facebook.com:80/")
-
-        # تشغيل FFmpeg بطريقة آمنة ومحسنة تستهلك أقل قدر من موارد السيرفر (حماية لحساب GitHub)
+        # [تعديل مهم] تم إيقاف تغيير rtmps إلى rtmp باش يدوز الرابط الصحيح ديالك نيشان بلا مشاكل!
         ffmpeg_cmd = [
             'ffmpeg', '-reconnect', '1', '-reconnect_at_eof', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '15',
             '-headers', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\n',
@@ -183,10 +175,8 @@ def handle_text_actions(message):
             bot.reply_to(message, "ℹ️ ليس لديك أي بث شغال لإيقافه.")
             return
         
-        # أزرار تفاعلية خضراء لاختيار الماتش المراد حذفه
         markup = types.InlineKeyboardMarkup(row_width=1)
         for s_id, data in user_streams.items():
-            # استخدام إيموجي الدائرة الخضراء والزر المنظم
             btn = types.InlineKeyboardButton(f"🟢 إيقاف: {data['name']}", callback_data=f"stop_{s_id}")
             markup.add(btn)
         bot.send_message(user_id, "👇 اختر البث لي بغيتي تطفي من القائمة التفاعلية:", reply_markup=markup)
@@ -237,7 +227,6 @@ if __name__ == "__main__":
     threading.Thread(target=run_flask, daemon=True).start()
     print("🚀 Running Clean Polling Engine...")
     
-    # إعادة إحياء الجلسات التلقائي
     cached_all = load_all_cache()
     if cached_all:
         for s_id, data in cached_all.items():
